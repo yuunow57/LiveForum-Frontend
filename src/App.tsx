@@ -6,6 +6,7 @@ import RegisterPage from "./pages/auth/RegisterPage.tsx";
 import PostListPage from "./pages/post/PostListPage.tsx";
 import PostDetailPage from "./pages/post/PostDetailPage.tsx";
 import PostCreatePage from "./pages/post/PostCreatePage.tsx";
+import ProfilePage from "./pages/user/ProfilePage.tsx";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
           <Route path="/board/:boardId" element={<PostListPage />} />
           <Route path="/post/:postId" element={<PostDetailPage />} />
           <Route path="/post/create" element={<PostCreatePage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Route>
 
         {/* 인증 관련 페이지 */}

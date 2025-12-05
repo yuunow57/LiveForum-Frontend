@@ -49,6 +49,7 @@ export default function MainLayout() {
           ) : (
             <>
               <span className="text-gray-400">{user?.nickname}님</span>
+              <Link to="/profile" className="hover:underline">프로필</Link>
               <button onClick={logout} className="hover:underline ml-2">
                 로그아웃
               </button>
