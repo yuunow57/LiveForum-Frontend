@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { fetchPosts } from "../../api/post.api";
 import { Link } from "react-router-dom";
+import PostCard from "../../components/PostCard";
+import Loading from "../../components/Loading";
 
 export default function PostListPage() {
   const { boardId } = useParams();
@@ -22,7 +24,12 @@ export default function PostListPage() {
     loadPosts();
   }, [page, sort, boardId]);
 
+  if (!posts) return <Loading />; // 포스트 리스트 불러오기 전
+  if (posts.length === 0)
+  return <p className="text-gray-400">게시글이 없습니다.</p>;
+
   return (
+    
     <div>
       <h2 className="text-2xl font-bold mb-6">게시판 {boardId}</h2>
 
@@ -62,6 +69,9 @@ export default function PostListPage() {
               <span>좋아요 {p.likeCount}</span>
             </div>
           </Link>
+        ))}
+        {posts.map((p) => (
+          <PostCard key={p.id} post={p} />
         ))}
       </div>
 

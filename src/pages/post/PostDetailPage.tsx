@@ -4,6 +4,8 @@ import { api } from "../../api/axios";
 import { fetchComments, createComment } from "../../api/comment.api";
 import { socket } from "../../socket/socket";
 import { useAuthStore } from "../../store/auth.store";
+import CommentItem from "../../components/CommentItem";
+import Loading from "../../components/Loading";
 
 export default function PostDetailPage() {
   const { postId } = useParams();
@@ -48,7 +50,7 @@ export default function PostDetailPage() {
     };
   }, [postId]);
 
-  if (!post) return <p>로딩중...</p>;
+  if (!post) return <Loading />;
 
   return (
     <div>
@@ -64,6 +66,9 @@ export default function PostDetailPage() {
             <span className="text-sm text-gray-400">{c.user.nickname}:</span>
             <p>{c.content}</p>
           </div>
+        ))}
+        {comments.map((c) => (
+          <CommentItem key={c.id} c={c} />
         ))}
       </div>
 
