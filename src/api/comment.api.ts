@@ -1,7 +1,13 @@
 import { api } from "./axios";
 
-export const fetchComments = (postId: string) =>
-  api.get(`/comment/${postId}`);
+export const fetchComments = (postId: number) =>
+  api.get(`/comments/${postId}`);
 
-export const createComment = (postId: string, content: string) =>
-  api.post(`/comment/${postId}`, { content });
+export const createComment = ({
+  postId,
+  content,
+}: {
+  postId: number;
+  content: string;
+}) =>
+  api.post("/comments", { postId, content });

@@ -1,37 +1,88 @@
 import { useEffect, useState } from "react";
-import { fetchBoards } from "../api/board.api";
 import { Link } from "react-router-dom";
+import { fetchBoards } from "../api/board.api";
+import { fetchPosts } from "../api/post.api";
 
 export default function HomePage() {
-  const [boards, setBoards] = useState<any[]>([]);
+  const [boards, setBoards] = useState([]);
+  const [sectionPosts, setSectionPosts] = useState({} as any);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetchBoards();
-        setBoards(res.data.data); // 백엔드 response 형태에 맞게 조정
-      } catch (err) {
-        console.log(err);
-      }
-    })();
+    loadBoards();
   }, []);
 
-  return (
-    <div className="mt-6">
-      <h1 className="text-3xl font-bold mb-6">게시판 목록</h1>
+  const loadBoards = async () => {
+    try {
+      const res = await fetchBoards();
+      const boardsData = Array.isArray(res.data)
+        ? res.data
+        : res.data.data ?? [];
 
-      <div className="space-y-3">
-        {boards.map((b) => (
-          <Link
-            to={`/board/${b.id}`}
-            key={b.id}
-            className="block p-4 rounded-lg bg-[#1b1c22] border border-gray-700 hover:bg-[#22232a]"
-          >
-            <h3 className="text-lg font-semibold">{b.name}</h3>
-            <p className="text-gray-400 text-sm">{b.description}</p>
-          </Link>
-        ))}
-      </div>
+      setBoards(boardsData);
+
+      boardsData.forEach((b: any) => {
+        loadSectionPosts(b.id);
+      });
+    } catch (err) {
+      console.error("게시판 목록 로드 오류:", err);
+    }
+  };
+
+  const loadSectionPosts = async (boardId: number) => {
+    try {
+      const res = await fetchPosts({
+        boardId: String(boardId),
+        page: 1,
+        sort: "latest",
+      });
+
+      const posts = res.data.data ?? res.data;
+
+      setSectionPosts((prev: any) => ({
+        ...prev,
+        [boardId]: posts.slice(0, 3),
+      }));
+    } catch (err) {
+      console.error("게시판별 최신글 로드 오류:", err);
+    }
+  };
+
+  return (
+    <div className="w-full space-y-10">
+      <h1 className="text-3xl font-bold mb-6">🏠 메인 페이지</h1>
+
+      {boards.map((board: any) => (
+        <section key={board.id}>
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-xl font-semibold">{board.name}</h2>
+            <Link
+              to={`/boards/${board.id}`}
+              className="text-sm text-green-400 hover:underline"
+            >
+              더보기 →
+            </Link>
+          </div>
+
+          <div className="bg-[#1c1d22] p-5 rounded-lg">
+            {sectionPosts[board.id]?.length > 0 ? (
+              <ul className="space-y-2">
+                {sectionPosts[board.id].map((post: any) => (
+                  <li key={post.id}>
+                    <Link
+                      to={`/posts/${post.id}`}
+                      className="block text-gray-200 hover:text-white truncate"
+                    >
+                      • {post.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-500">게시글이 없습니다.</p>
+            )}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

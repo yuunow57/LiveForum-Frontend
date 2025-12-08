@@ -1,99 +1,77 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { fetchPosts } from "../../api/post.api";
-import { Link } from "react-router-dom";
-import PostCard from "../../components/PostCard";
-import Loading from "../../components/Loading";
+import { fetchBoards } from "../../api/board.api";
 
 export default function PostListPage() {
   const { boardId } = useParams();
-  const [posts, setPosts] = useState<any[]>([]);
-  const [page, setPage] = useState(1);
-  const [sort, setSort] = useState("latest");
+  const navigate = useNavigate();
 
-  const loadPosts = async () => {
-    try {
-      const res = await fetchPosts({ boardId: boardId!, page, sort });
-      setPosts(res.data.data.items);
-    } catch (err) {
-      console.log(err);
-    }
-  };
+  const [posts, setPosts] = useState([]);
+  const [board, setBoard] = useState<any>(null);
 
   useEffect(() => {
+    if (!boardId) return;
+    loadBoardInfo();
     loadPosts();
-  }, [page, sort, boardId]);
+  }, [boardId]);
 
-  if (!posts) return <Loading />; // 포스트 리스트 불러오기 전
-  if (posts.length === 0)
-  return <p className="text-gray-400">게시글이 없습니다.</p>;
+  const loadBoardInfo = async () => {
+    const res = await fetchBoards();
+    const boards = res.data.data ?? res.data ?? [];
+    const found = boards.find((b: any) => b.id === Number(boardId));
+    setBoard(found);
+  };
+
+  const loadPosts = async () => {
+    const res = await fetchPosts({
+      boardId: String(boardId),
+      page: 1,
+      sort: "latest",
+    });
+
+    const data = res.data.data ?? res.data ?? [];
+    setPosts(data);
+  };
 
   return (
-    
-    <div>
-      <h2 className="text-2xl font-bold mb-6">게시판 {boardId}</h2>
+    <div className="text-white">
+      <h2 className="text-2xl font-bold mb-6">
+        📌 {board?.name ?? "게시판"}
+      </h2>
 
-      {/* 정렬 버튼 */}
-      <div className="flex space-x-3 mb-6">
+      {/* 글쓰기 버튼 */}
+      <div className="flex justify-end mb-4">
         <button
-          onClick={() => setSort("latest")}
-          className={`px-3 py-2 rounded ${
-            sort === "latest" ? "bg-blue-600" : "bg-[#1b1c22]"
-          }`}
+          onClick={() =>
+            navigate(`/posts/create?boardId=${boardId}`)
+          }
+          className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-md text-sm"
         >
-          최신순
-        </button>
-
-        <button
-          onClick={() => setSort("popular")}
-          className={`px-3 py-2 rounded ${
-            sort === "popular" ? "bg-blue-600" : "bg-[#1b1c22]"
-          }`}
-        >
-          인기순
+          ✍ 글쓰기
         </button>
       </div>
 
-      {/* 게시글 목록 */}
-      <div className="space-y-3">
-        {posts.map((p) => (
-          <Link
-            to={`/post/${p.id}`}
-            key={p.id}
-            className="block p-4 rounded bg-[#1b1c22] border border-gray-700 hover:bg-[#232429]"
-          >
-            <h3 className="text-lg font-semibold">{p.title}</h3>
-            <div className="text-gray-400 text-sm flex justify-between mt-2">
-              <span>댓글 {p.commentCount}</span>
-              <span>조회수 {p.viewCount}</span>
-              <span>좋아요 {p.likeCount}</span>
-            </div>
-          </Link>
-        ))}
-        {posts.map((p) => (
-          <PostCard key={p.id} post={p} />
-        ))}
-      </div>
-
-      {/* Pagination */}
-      <div className="flex justify-center mt-6 space-x-4">
-        <button
-          disabled={page === 1}
-          onClick={() => setPage(page - 1)}
-          className="px-3 py-1 rounded bg-[#1b1c22] border border-gray-700 disabled:opacity-50"
-        >
-          이전
-        </button>
-
-        <span className="px-3 py-1">Page {page}</span>
-
-        <button
-          onClick={() => setPage(page + 1)}
-          className="px-3 py-1 rounded bg-[#1b1c22] border border-gray-700"
-        >
-          다음
-        </button>
-      </div>
+      <ul className="space-y-3">
+        {posts.length > 0 ? (
+          posts.map((post: any) => (
+            <li
+              key={post.id}
+              className="px-4 py-3 bg-[#1c1d22] rounded-lg hover:bg-[#2a2b30] transition"
+            >
+              <Link
+                to={`/posts/${post.id}?boardId=${boardId}`}
+                className="text-lg font-semibold"
+              >
+                {post.title}
+              </Link>
+              <p className="text-gray-400 text-sm mt-1 truncate">{post.content}</p>
+            </li>
+          ))
+        ) : (
+          <p className="text-gray-500">작성된 게시글이 없습니다.</p>
+        )}
+      </ul>
     </div>
   );
 }

@@ -1,9 +1,9 @@
 import { api } from "./axios";
 
 export const registerRequest = (data: {
+  username: string;
   email: string;
   password: string;
-  nickname: string;
 }) => api.post("/auth/register", data);
 
 export const loginRequest = (data: {

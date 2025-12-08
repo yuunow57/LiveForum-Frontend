@@ -1,91 +1,110 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { api } from "../../api/axios";
+import { fetchPost } from "../../api/post.api";
 import { fetchComments, createComment } from "../../api/comment.api";
-import { socket } from "../../socket/socket";
 import { useAuthStore } from "../../store/auth.store";
-import CommentItem from "../../components/CommentItem";
-import Loading from "../../components/Loading";
 
 export default function PostDetailPage() {
   const { postId } = useParams();
   const { accessToken } = useAuthStore();
-  
+
   const [post, setPost] = useState<any>(null);
-  const [comments, setComments] = useState<any[]>([]);
-  const [content, setContent] = useState("");
-
-  const loadPost = async () => {
-    const res = await api.get(`/post/${postId}`);
-    setPost(res.data.data);
-  };
-
-  const loadComments = async () => {
-    const res = await fetchComments(postId!);
-    setComments(res.data.data);
-  };
-
-  const sendComment = async () => {
-    await createComment(postId!, content);
-    setContent("");
-  };
+  const [comments, setComments] = useState<any[]>([]); // ⭐ 배열로 초기화
+  const [commentInput, setCommentInput] = useState("");
 
   useEffect(() => {
+    if (!postId) return;
     loadPost();
     loadComments();
   }, [postId]);
 
-  // WebSocket 연결 + 실시간 댓글 반영
-  useEffect(() => {
-    socket.connect();
-    socket.emit("join_post", postId);
+  const loadPost = async () => {
+    try {
+      const res = await fetchPost(Number(postId));
+      const postData = res.data.data ?? res.data;
+      setPost(postData);
+    } catch (error) {
+      console.error("게시글 가져오기 실패:", error);
+    }
+  };
 
-    socket.on("comment_added", (data) => {
-      setComments((prev) => [...prev, data]);
-    });
+  const loadComments = async () => {
+    try {
+      const res = await fetchComments(Number(postId));
+      const commentData = res.data.data ?? res.data ?? [];
+      setComments(Array.isArray(commentData) ? commentData : []);
+    } catch (error) {
+      console.error("댓글 가져오기 실패:", error);
+      setComments([]); // 실패시 빈 배열
+    }
+  };
 
-    return () => {
-      socket.emit("leave_post", postId);
-      socket.removeAllListeners();
-    };
-  }, [postId]);
+  const handleCreateComment = async () => {
+    if (!accessToken) return alert("로그인이 필요합니다!");
+    if (!commentInput.trim()) return;
 
-  if (!post) return <Loading />;
+    try {
+      await createComment({
+        postId: Number(postId),
+        content: commentInput,
+      });
+
+      setCommentInput("");
+      loadComments(); 
+    } catch (error) {
+      console.error(error);
+      alert("댓글 작성 실패");
+    }
+  };
+
+  if (!post) return <p className="text-gray-400">게시글을 불러오는 중...</p>;
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-3">{post.title}</h2>
-      <p className="text-gray-400 mb-8">{post.content}</p>
+    <div className="text-white space-y-6">
+      {/* 제목 */}
+      <h2 className="text-3xl font-bold">{post.title}</h2>
 
-      <h3 className="text-lg font-semibold mb-4">댓글</h3>
+      {/* 내용 */}
+      <p className="text-gray-300 whitespace-pre-line">{post.content}</p>
+
+      <hr className="border-gray-700" />
 
       {/* 댓글 목록 */}
-      <div className="space-y-3">
-        {comments.map((c) => (
-          <div key={c.id} className="p-3 rounded bg-[#1b1c22] border border-gray-700">
-            <span className="text-sm text-gray-400">{c.user.nickname}:</span>
-            <p>{c.content}</p>
-          </div>
-        ))}
-        {comments.map((c) => (
-          <CommentItem key={c.id} c={c} />
-        ))}
+      <div>
+        <h3 className="text-lg font-semibold mb-3">💬 댓글</h3>
+
+        {comments.length === 0 ? (
+          <p className="text-gray-500">댓글이 없습니다.</p>
+        ) : (
+          <ul className="space-y-3">
+            {comments.map((c: any) => (
+              <li key={c.id} className="p-3 bg-[#1e1f25] rounded-md">
+                <p className="text-sm text-gray-300">{c.content}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {c.user?.nickname ?? "알 수 없음"} ·{" "}
+                  {new Date(c.createAt).toLocaleString()}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* 댓글 입력 */}
-      {accessToken ? (
-        <div className="mt-6 flex gap-2">
-          <input
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="flex-1 px-3 py-2 rounded bg-gray-800 outline-none"
-            placeholder="댓글을 입력하세요"
-          />
-          <button onClick={sendComment} className="px-4 bg-blue-600 rounded">작성</button>
-        </div>
-      ) : (
-        <p className="text-gray-500 mt-4">로그인 후 댓글 작성 가능</p>
-      )}
+      <div className="flex gap-2">
+        <input
+          className="flex-1 px-3 py-2 rounded bg-gray-800 outline-none"
+          placeholder="댓글을 입력하세요"
+          value={commentInput}
+          onChange={(e) => setCommentInput(e.target.value)}
+        />
+        <button
+          onClick={handleCreateComment}
+          className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+        >
+          작성
+        </button>
+      </div>
     </div>
   );
 }

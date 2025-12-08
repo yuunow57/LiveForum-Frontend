@@ -6,13 +6,13 @@ export default function RegisterPage() {
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [nickname, setNickname] = useState("");
+  const [username, setUsername] = useState("");
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      await registerRequest({ email, password, nickname });
+      await registerRequest({ email, password, username });
       alert("회원가입 성공!");
       nav("/login");
     } catch (err: any) {
@@ -35,8 +35,8 @@ export default function RegisterPage() {
         <input
           className="w-full px-3 py-2 rounded bg-gray-800 outline-none"
           placeholder="닉네임"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
         />
 
         <input

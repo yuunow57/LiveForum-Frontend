@@ -1,35 +1,53 @@
-import { Outlet, Link } from "react-router-dom";
-import { useEffect } from "react";
+import { Outlet, Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "../store/auth.store";
 import { useNotificationStore } from "../store/notification.store";
+import { fetchBoards } from "../api/board.api";
 import { socket } from "../socket/socket";
 
 export default function MainLayout() {
   const { accessToken, user, logout } = useAuthStore();
   const { unreadCount, increase } = useNotificationStore();
+  const [boards, setBoards] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (!accessToken) return; // 로그인 상태일 때만 WebSocket 연결
-    socket.connect();
-
-    socket.on("notify_user", () => {
-      increase();
-    });
-
+    if (accessToken) {
+      if (!socket.connected) socket.connect();
+      socket.on("notify_user", () => increase());
+    } else {
+      socket.disconnect();
+    }
     return () => {
       socket.off("notify_user");
-      socket.disconnect();
     };
   }, [accessToken, increase]);
 
+  useEffect(() => {
+    loadBoards();
+  }, []);
+
+  const loadBoards = async () => {
+    try {
+      const res = await fetchBoards();
+      const boardsData = Array.isArray(res.data)
+        ? res.data
+        : res.data.data ?? [];
+      setBoards(boardsData);
+    } catch (e) {
+      console.error("게시판 불러오기 오류:", e);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#0e0f12] text-white flex flex-col">
-      {/* Header */}
+    <div className="min-h-screen w-full bg-[#0e0f12] text-white flex flex-col">
+      {/* 헤더 */}
       <header className="h-14 flex items-center border-b border-gray-800 px-6 justify-between">
-        <Link to="/" className="text-xl font-bold">LiveForum</Link>
+        <Link to="/" className="text-xl font-bold text-green-400">
+          LiveForum
+        </Link>
 
         <nav className="space-x-4 flex items-center">
-
           {accessToken && (
             <Link to="/notifications" className="relative text-lg">
               🔔
@@ -58,10 +76,28 @@ export default function MainLayout() {
         </nav>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-4xl w-full mx-auto py-8 px-4">
-        <Outlet />
-      </main>
+      {/* Body */} 
+      <div className="flex flex-1 w-full">
+        {/* Sidebar */}
+        <aside className="hidden md:flex flex-col w-56 border-r border-gray-800 p-4 gap-2">
+          <h3 className="text-sm text-gray-400 mb-2">📚 게시판</h3>
+
+          {boards.map((b: any) => (
+            <button
+              key={b.id}
+              onClick={() => navigate(`/boards/${b.id}`)}
+              className="text-left text-gray-300 hover:bg-gray-800 px-3 py-2 rounded-md transition"
+            >
+              {b.name}
+            </button>
+          ))}
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 px-10 py-8">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

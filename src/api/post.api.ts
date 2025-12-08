@@ -9,6 +9,19 @@ export const fetchPosts = ({
   page: number;
   sort: string;
 }) =>
-  api.get("/post", {
-    params: { boardId, page, sort },
+  api.get("/posts", {
+    params: {
+      boardId,
+      page,
+      sort,
+    },
   });
+
+export const fetchPost = (id: number) =>
+  api.get(`/posts/${id}`);
+
+export const createPost = (dto: {
+  title: string;
+  content: string;
+  boardId: number;
+}) => api.post("/posts", dto);

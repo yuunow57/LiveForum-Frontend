@@ -15,12 +15,15 @@ export default function LoginPage() {
 
     try {
       const res = await loginRequest({ email, password });
-      const { accessToken, user } = res.data;
 
-      setAuth(accessToken, user);
+      const { accessToken } = res.data.data;
+
+      setAuth(accessToken, null);
+
       alert("로그인 성공!");
       nav("/");
     } catch (err: any) {
+      console.error("로그인 실패:", err);
       alert(err.response?.data?.message || "로그인 실패");
     }
   };
