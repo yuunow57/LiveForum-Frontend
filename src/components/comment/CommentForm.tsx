@@ -19,7 +19,7 @@ export default function CommentForm({ postId, onSuccess }: CommentFormProps) {
     if (!content.trim()) return;
 
     try {
-      await createComment(postId, content);
+      await createComment({postId, content});
       setContent("");
       onSuccess(); // 부모에서 reloadKey 올리게 함
     } catch (error) {

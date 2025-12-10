@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 export default function LoginPage() {
   const nav = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const setUser = useAuthStore((s) => s.setUser);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,14 +17,16 @@ export default function LoginPage() {
     try {
       const res = await loginRequest({ email, password });
 
-      const { accessToken } = res.data.data;
+      const accessToken = res.data.data.accessToken; // 👈 정확하게 꺼냄
+      await setAuth(accessToken); // 토큰 저장 + me 호출
 
-      setAuth(accessToken, null);
+      // me 로딩 이후 user 반영
+      const me = await useAuthStore.getState().checkAuth();
+      setUser(useAuthStore.getState().user);
 
       alert("로그인 성공!");
       nav("/");
     } catch (err: any) {
-      console.error("로그인 실패:", err);
       alert(err.response?.data?.message || "로그인 실패");
     }
   };

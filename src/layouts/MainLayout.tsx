@@ -6,23 +6,27 @@ import { fetchBoards } from "../api/board.api";
 import { socket } from "../socket/socket";
 
 export default function MainLayout() {
-  const { accessToken, user, logout } = useAuthStore();
+  const { accessToken, user, isAuthenticated, logout } = useAuthStore();
   const { unreadCount, increase } = useNotificationStore();
   const [boards, setBoards] = useState([]);
   const navigate = useNavigate();
 
+  // WebSocket - 로그인 상태에서만 연결
   useEffect(() => {
     if (accessToken) {
       if (!socket.connected) socket.connect();
+
       socket.on("notify_user", () => increase());
     } else {
       socket.disconnect();
     }
+
     return () => {
       socket.off("notify_user");
     };
   }, [accessToken, increase]);
 
+  // 게시판 불러오기
   useEffect(() => {
     loadBoards();
   }, []);
@@ -33,6 +37,7 @@ export default function MainLayout() {
       const boardsData = Array.isArray(res.data)
         ? res.data
         : res.data.data ?? [];
+
       setBoards(boardsData);
     } catch (e) {
       console.error("게시판 불러오기 오류:", e);
@@ -41,14 +46,14 @@ export default function MainLayout() {
 
   return (
     <div className="min-h-screen w-full bg-[#0e0f12] text-white flex flex-col">
-      {/* 헤더 */}
+      {/* Header */}
       <header className="h-14 flex items-center border-b border-gray-800 px-6 justify-between">
         <Link to="/" className="text-xl font-bold text-green-400">
           LiveForum
         </Link>
 
         <nav className="space-x-4 flex items-center">
-          {accessToken && (
+          {isAuthenticated && (
             <Link to="/notifications" className="relative text-lg">
               🔔
               {unreadCount > 0 && (
@@ -59,16 +64,27 @@ export default function MainLayout() {
             </Link>
           )}
 
-          {!accessToken ? (
+          {!isAuthenticated ? (
             <>
-              <Link to="/login" className="hover:underline">로그인</Link>
-              <Link to="/register" className="hover:underline">회원가입</Link>
+              <Link to="/login" className="hover:underline">
+                로그인
+              </Link>
+              <Link to="/register" className="hover:underline">
+                회원가입
+              </Link>
             </>
           ) : (
             <>
-              <span className="text-gray-400">{user?.nickname}님</span>
-              <Link to="/profile" className="hover:underline">프로필</Link>
-              <button onClick={logout} className="hover:underline ml-2">
+              <span className="text-gray-300 font-semibold">
+                {user?.username ?? "사용자"}
+              </span>
+              <Link to="/profile" className="hover:underline">
+                프로필
+              </Link>
+              <button
+                onClick={logout}
+                className="hover:underline ml-2 text-red-400"
+              >
                 로그아웃
               </button>
             </>
@@ -76,7 +92,7 @@ export default function MainLayout() {
         </nav>
       </header>
 
-      {/* Body */} 
+      {/* Body */}
       <div className="flex flex-1 w-full">
         {/* Sidebar */}
         <aside className="hidden md:flex flex-col w-56 border-r border-gray-800 p-4 gap-2">
