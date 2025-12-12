@@ -11,8 +11,10 @@ export default function PostDetailPage() {
 
   const [post, setPost] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
-  const [likeCount, setLikeCount] = useState(0); // 게시글 좋아요 수
-  const [isLiked, setIsLiked] = useState(false); // 게시글 좋아요 여부
+
+  const [likeCount, setLikeCount] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
+
   const [commentText, setCommentText] = useState("");
 
   useEffect(() => {
@@ -20,46 +22,63 @@ export default function PostDetailPage() {
 
     loadPost();
     loadComments();
-    loadLikeCount();
+    loadPostLike();
 
     if (isAuthenticated) {
-      loadIsLiked(); // 게시글 좋아요 최초 상태 반영
+      loadPostLiked();
     }
   }, [postId, isAuthenticated]);
 
-  // 게시글 정보
+  /* ---------------- 게시글 ---------------- */
+
   const loadPost = async () => {
     try {
       const res = await fetchPost(Number(postId));
       setPost(res.data.data ?? res.data);
-    } catch (err) {
-      console.error("게시글 불러오기 실패:", err);
+    } catch (e) {
+      console.error("게시글 로딩 실패", e);
     }
   };
 
-  // 댓글 + 각 댓글 좋아요 정보
+  const loadPostLike = async () => {
+    const res = await getLikeCount(Number(postId), "post");
+    setLikeCount(res.data.data?.count ?? 0);
+  };
+
+  const loadPostLiked = async () => {
+    try {
+      const res = await checkLiked(Number(postId), "post");
+      setIsLiked(res.data.data?.liked ?? false);
+    } catch {}
+  };
+
+  const togglePostLike = async () => {
+    if (!isAuthenticated) return alert("로그인이 필요합니다.");
+
+    const res = await toggleLike(Number(postId), "post");
+    const data = res.data.data;
+
+    setLikeCount(data.likeCount);
+    setIsLiked(data.liked);
+  };
+
+  /* ---------------- 댓글 ---------------- */
+
   const loadComments = async () => {
     try {
       const res = await fetchComments(Number(postId));
       const base = res.data.data ?? res.data ?? [];
-      const list = Array.isArray(base) ? base : [];
 
-      if (list.length === 0) {
-        setComments([]);
-        return;
-      }
-
-      // 댓글별 좋아요 수 + 내가 눌렀는지 여부까지 붙이기
       const enriched = await Promise.all(
-        list.map(async (c: any) => {
+        base.map(async (c: any) => {
           try {
-            const likeRes = await getLikeCount(c.id, "comment");
-            const count = likeRes.data.data?.count ?? 0;
+            const countRes = await getLikeCount(c.id, "comment");
+            const count = countRes.data.data?.count ?? 0;
 
             let liked = false;
             if (isAuthenticated) {
               const likedRes = await checkLiked(c.id, "comment");
-              liked = likedRes.data.data?.liked ?? likedRes.data.liked ?? false;
+              liked = likedRes.data.data?.liked ?? false;
             }
 
             return { ...c, likeCount: count, isLiked: liked };
@@ -70,68 +89,35 @@ export default function PostDetailPage() {
       );
 
       setComments(enriched);
-    } catch (err) {
-      console.error("댓글 불러오기 실패:", err);
+    } catch (e) {
+      console.error("댓글 로딩 실패", e);
       setComments([]);
     }
   };
 
-  // 게시글 좋아요 수
-  const loadLikeCount = async () => {
-    const res = await getLikeCount(Number(postId), "post");
-    setLikeCount(res.data.data?.count ?? 0);
-  };
-
-  // 게시글 좋아요 여부
-  const loadIsLiked = async () => {
-    try {
-      const res = await checkLiked(Number(postId), "post");
-      setIsLiked(res.data.data?.liked ?? res.data.liked ?? false);
-    } catch (err) {
-      console.error("좋아요 여부 확인 실패:", err);
-    }
-  };
-
-  // 게시글 좋아요 토글
-  const onToggleLike = async () => {
-    if (!isAuthenticated) return alert("로그인이 필요합니다.");
-
-    const res = await toggleLike(Number(postId), "post");
-    const updated = res.data.data;
-
-    setLikeCount(updated.likeCount);
-    setIsLiked(updated.liked);
-  };
-
-  // 댓글 좋아요 토글
-  const onToggleCommentLike = async (commentId: number) => {
+  const toggleCommentLike = async (commentId: number) => {
     if (!isAuthenticated) return alert("로그인이 필요합니다.");
 
     try {
       const res = await toggleLike(commentId, "comment");
-      const updated = res.data.data;
+      const data = res.data.data;
 
       setComments((prev) =>
         prev.map((c) =>
           c.id === commentId
-            ? {
-                ...c,
-                likeCount: updated.likeCount,
-                isLiked: updated.liked,
-              }
+            ? { ...c, likeCount: data.likeCount, isLiked: data.liked }
             : c
         )
       );
-    } catch (err) {
-      console.error("댓글 좋아요 실패:", err);
-      alert("댓글 좋아요 실패");
+    } catch (e) {
+      console.error("댓글 좋아요 실패", e);
     }
   };
 
-  // 댓글 작성
-  const onSubmitComment = async (e: React.FormEvent) => {
+  const submitComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAuthenticated) return alert("로그인이 필요합니다.");
+    if (!commentText.trim()) return;
 
     await createComment({
       postId: Number(postId),
@@ -139,67 +125,76 @@ export default function PostDetailPage() {
     });
 
     setCommentText("");
-    await loadComments(); // 새 댓글 + 댓글 좋아요까지 다시 로딩
+    loadComments();
   };
 
-  if (!post) return <p className="text-gray-400">게시글 불러오는 중...</p>;
+  if (!post) {
+    return <p className="text-gray-400">게시글을 불러오는 중...</p>;
+  }
 
   return (
-    <div className="text-white space-y-6">
-      <h2 className="text-3xl font-bold">{post.title}</h2>
+    <div className="text-white space-y-6 max-w-4xl mx-auto">
+      {/* 제목 */}
+      <h1 className="text-3xl font-bold">{post.title}</h1>
 
-      <div className="text-gray-400 text-sm">
-        ✍ 작성자: {post.author?.username ?? "알 수 없음"}
+      {/* 작성자 */}
+      <div className="text-sm text-gray-400">
+        ✍ {post.author?.username ?? "알 수 없음"} ·{" "}
+        {new Date(post.createAt).toLocaleString()}
       </div>
 
-      <p className="bg-[#1c1d22] p-5 rounded-lg leading-7 whitespace-pre-line">
-        {post.content}
-      </p>
+      {/* 본문 (HTML 렌더링) */}
+      <div
+        className="prose prose-invert max-w-none bg-[#1c1d22] p-5 rounded"
+        dangerouslySetInnerHTML={{ __html: post.content }}
+      />
 
-      {/* 👍 게시글 좋아요 버튼 */}
+      {/* 게시글 좋아요 */}
       <button
-        onClick={onToggleLike}
-        className={`px-4 py-2 rounded font-semibold transition ${
-          isLiked ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
+        onClick={togglePostLike}
+        className={`px-4 py-2 rounded font-semibold ${
+          isLiked ? "bg-red-600" : "bg-blue-600"
         }`}
       >
         {isLiked ? "❤️ 좋아요 취소" : "👍 좋아요"} {likeCount}
       </button>
 
-      <h3 className="text-xl mt-10 mb-4">💬 댓글</h3>
+      {/* 댓글 */}
+      <h3 className="text-xl mt-10">💬 댓글</h3>
 
       <ul className="space-y-4">
         {comments.map((c) => (
-          <li key={c.id} className="bg-[#1a1b1f] p-4 rounded-lg">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-gray-400 text-sm">
+          <li key={c.id} className="bg-[#1a1b1f] p-4 rounded">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-sm text-gray-400">
                 {c.author?.username ?? "알 수 없음"}
               </span>
 
-              {/* 👍 댓글 좋아요 버튼 */}
               <button
-                onClick={() => onToggleCommentLike(c.id)}
-                className={`text-xs px-3 py-1 rounded transition ${
+                onClick={() => toggleCommentLike(c.id)}
+                className={`text-xs px-3 py-1 rounded ${
                   c.isLiked ? "bg-red-500" : "bg-gray-700"
                 }`}
               >
-                👍 {c.likeCount ?? 0}
+                👍 {c.likeCount}
               </button>
             </div>
-            <p>{c.content}</p>
+
+            <p className="whitespace-pre-line">{c.content}</p>
           </li>
         ))}
       </ul>
 
-      <form onSubmit={onSubmitComment} className="space-y-3 mt-6">
+      {/* 댓글 작성 */}
+      <form onSubmit={submitComment} className="space-y-3">
         <textarea
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
-          placeholder="댓글을 입력하세요"
           className="w-full p-3 bg-gray-800 rounded"
           rows={3}
+          placeholder="댓글을 입력하세요"
         />
-        <button className="px-4 py-2 bg-green-600 rounded hover:bg-green-700">
+        <button className="px-4 py-2 bg-green-600 rounded">
           댓글 작성
         </button>
       </form>
