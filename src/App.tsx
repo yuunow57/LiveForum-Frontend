@@ -10,6 +10,7 @@ import RegisterPage from "./pages/auth/RegisterPage";
 import PostListPage from "./pages/post/PostListPage";
 import PostDetailPage from "./pages/post/PostDetailPage";
 import PostCreatePage from "./pages/post/PostCreatePage";
+import PostEditPage from "./pages/post/PostEditPage";
 
 import ProfilePage from "./pages/user/ProfilePage";
 import NotificationPage from "./pages/notification/NotificationPage";
@@ -37,6 +38,7 @@ export default function App() {
           {/* 로그인 필요 */}
           <Route element={<RequireAuth />}>
             <Route path="/posts/create" element={<PostCreatePage />} />
+            <Route path="/posts/edit/:postId" element={<PostEditPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/notifications" element={<NotificationPage />} />
           </Route>
